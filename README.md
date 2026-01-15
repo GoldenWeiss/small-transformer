@@ -1,3 +1,3 @@
 # small-transformer
 
-Transformer from scratch coding following many of the free available tutorials online.
+Transformer from scratch coding (pytorch) following many of the free available tutorials online.
