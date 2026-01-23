@@ -58,3 +58,42 @@ class FeedForwardBlock(nn.Module):
         x = self.dropout(x)
         x = self.linear2(x)
         return x
+
+class MultiHeadAttentionBlock(nn.Module):
+    def __init__(self, embedding_dim, num_heads, dropout_rate):
+        super().__init__()
+        self.embed_dim = embedding_dim
+        self.num_heads = num_heads
+        assert embedding_dim % num_heads == 0, "Embedding dimension must be divisible by number of heads"
+        self.head_dim = embedding_dim // num_heads # Dimension per head
+        self.w_q = nn.Linear(embedding_dim, embedding_dim) # Query linear layer
+        self.w_k = nn.Linear(embedding_dim, embedding_dim) # Key linear layer
+        self.w_v = nn.Linear(embedding_dim, embedding_dim) # Value linear layer
+        self.w_o = nn.Linear(embedding_dim, embedding_dim) # Output linear layer
+        self.dropout = nn.Dropout(dropout_rate)
+
+    @staticmethod
+    def attention(query, key, value, mask, dropout: nn.Dropout):
+        scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(query.size(-1))
+        if mask is not None:
+            scores = scores.masked_fill(mask == 0, float('-inf'))
+        p_attn = torch.softmax(scores, dim=-1)
+        if dropout is not None:
+            p_attn = dropout(p_attn)
+        return torch.matmul(p_attn, value), p_attn
+    
+    def forward(self, q, k, v, mask):
+        batch_size = q.size(0)
+
+        # Linear projections
+        query = self.w_q(q).view(batch_size, -1, self.num_heads, self.head_dim).transpose(1, 2)
+        key = self.w_k(k).view(batch_size, -1, self.num_heads, self.head_dim).transpose(1, 2)
+        value = self.w_v(v).view(batch_size, -1, self.num_heads, self.head_dim).transpose(1, 2)
+
+        # Apply attention
+        x, attn = self.attention(query, key, value, mask, self.dropout)
+
+        # Concatenate heads and apply final linear layer
+        x = x.transpose(1, 2).contiguous().view(batch_size, -1, self.num_heads * self.head_dim)
+        return self.w_o(x)
+
