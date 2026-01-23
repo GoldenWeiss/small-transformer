@@ -30,3 +30,31 @@ class PositionalEncoding(nn.Module):
     def forward(self, x):
         x = x + self.pe[:, :x.size(1), :]
         return self.dropout(x)
+
+class LayerNormalization(nn.Module):
+    def __init__(self, embed_dim, eps=1e-6):
+        super().__init__()
+        self.embed_dim = embed_dim
+        self.eps = eps
+        self.alpha = nn.Parameter(torch.ones(embed_dim))
+        self.bias = nn.Parameter(torch.zeros(embed_dim))
+
+    def forward(self, x):
+        mean = x.mean(-1, keepdim=True)
+        std = x.std(-1, keepdim=True)
+        return self.alpha * (x - mean) / (std + self.eps) + self.bias
+
+class FeedForwardBlock(nn.Module):
+    def __init__(self, embed_dim, ff_dim, dropout_rate):
+        super().__init__()
+        self.linear1 = nn.Linear(embed_dim, ff_dim)
+        self.linear2 = nn.Linear(ff_dim, embed_dim)
+        self.dropout = nn.Dropout(dropout_rate)
+        self.activation = nn.ReLU()
+
+    def forward(self, x):
+        x = self.linear1(x)
+        x = self.activation(x)
+        x = self.dropout(x)
+        x = self.linear2(x)
+        return x
