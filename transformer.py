@@ -145,3 +145,22 @@ class DecoderBlock(nn.Module):
         x = self.residual2(x, lambda x: self.cross_attention(x, enc_output, enc_output, src_mask))
         x = self.residual3(x, self.feed_forward)
         return x
+
+class Decoder(nn.Module):
+    def __init__(self, embed_dim, layers :nn.ModuleList):
+        super().__init__()
+        self.layers = layers
+        self.norm = LayerNormalization(embed_dim)
+
+    def forward(self, x, enc_output, src_mask, tgt_mask):
+        for layer in self.layers:
+            x = layer(x, enc_output, src_mask, tgt_mask)
+        return self.norm(x)
+
+class ProjectionLayer(nn.Module):
+    def __init__(self, embed_dim, n_tokens):
+        super().__init__()
+        self.linear = nn.Linear(embed_dim, n_tokens)
+
+    def forward(self, x):
+        return self.linear(x)
